@@ -1,0 +1,42 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+venv/
+env/
+.env
+.env.*
+
+*.egg-info/
+.eggs/
+dist/
+build/
+
+node_modules/
+.vite/
+
+*.log
+.DS_Store
+Thumbs.db
+
+# ML models
+backend/app/ml/models/*.joblib
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# MySQL / SQLite
+*.db
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS files
+desktop.ini

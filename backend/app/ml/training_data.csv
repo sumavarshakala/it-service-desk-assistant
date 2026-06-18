@@ -1,0 +1,147 @@
+text,category,priority
+Unable to connect to VPN network connection failed,Network Issues,High
+VPN keeps disconnecting every few minutes,Network Issues,High
+WiFi not working in conference room,Network Issues,Medium
+Internet is down in entire office building,Network Issues,Critical
+Cannot access shared network drive,Network Issues,Medium
+DNS resolution failing for internal websites,Network Issues,High
+Slow network speed affecting productivity,Network Issues,Medium
+LAN cable not detected on workstation,Network Issues,Medium
+Firewall blocking internal application access,Network Issues,High
+Remote desktop connection timeout error,Network Issues,Medium
+Outlook crashes on startup every morning,Software Issues,High
+Microsoft Excel freezes when opening large files,Software Issues,Medium
+Application installation failed with error code,Software Issues,Medium
+Software license expired need renewal,Software Issues,Low
+CRM system showing blank page after login,Software Issues,High
+Browser compatibility issue with web portal,Software Issues,Medium
+Antivirus blocking legitimate software,Software Issues,Medium
+Database application connection error,Software Issues,Critical
+Software update broke existing functionality,Software Issues,High
+Java runtime error when launching application,Software Issues,Medium
+Laptop screen flickering and going black,Hardware Issues,High
+Keyboard keys not responding properly,Hardware Issues,Medium
+Mouse cursor jumping randomly on screen,Hardware Issues,Low
+Desktop computer not powering on,Hardware Issues,Critical
+USB ports not detecting connected devices,Hardware Issues,Medium
+Laptop battery not charging above 20 percent,Hardware Issues,Medium
+Monitor displaying distorted colors,Hardware Issues,Medium
+Hard drive making clicking noise,Hardware Issues,Critical
+RAM upgrade needed for slow performance,Hardware Issues,Low
+Docking station not connecting to monitors,Hardware Issues,Medium
+Cannot send emails getting bounce back errors,Email Problems,High
+Outlook not syncing emails from server,Email Problems,High
+Email attachments too large to send,Email Problems,Low
+Spam emails flooding inbox need filter,Email Problems,Medium
+Calendar invites not appearing in Outlook,Email Problems,Medium
+Email signature not displaying correctly,Email Problems,Low
+Shared mailbox access permission denied,Email Problems,Medium
+Email stuck in outbox not sending,Email Problems,High
+Cannot receive emails from external domain,Email Problems,High
+Email account locked due to failed attempts,Email Problems,High
+Forgot password need reset for login,Account Access,Low
+Account locked after multiple failed login attempts,Account Access,Medium
+New employee account creation request,Account Access,Low
+Password expired need to change immediately,Account Access,Medium
+Cannot access shared folder permission denied,Account Access,Medium
+Multi factor authentication not working,Account Access,High
+Active directory account disabled unexpectedly,Account Access,High
+Need access to project management tool,Account Access,Low
+SSO login failing for cloud applications,Account Access,High
+User permissions need to be updated for team,Account Access,Low
+Suspicious phishing email received from unknown sender,Security Issues,Critical
+Malware detected on workstation by antivirus,Security Issues,Critical
+Unauthorized login attempt detected on account,Security Issues,Critical
+USB drive with unknown files found on desk,Security Issues,High
+Security certificate expired on internal site,Security Issues,High
+Ransomware warning popup appeared on screen,Security Issues,Critical
+Data breach notification received need investigation,Security Issues,Critical
+Firewall alert for unusual outbound traffic,Security Issues,High
+Password sharing policy violation reported,Security Issues,Medium
+Two factor authentication device lost need reset,Security Issues,High
+Printer not printing documents from workstation,Printer Issues,Medium
+Printer showing paper jam error but no paper stuck,Printer Issues,Low
+Cannot connect to network printer on floor,Printer Issues,Medium
+Printer toner low need replacement cartridge,Printer Issues,Low
+Print queue stuck with pending jobs,Printer Issues,Medium
+Scanner not working on multifunction printer,Printer Issues,Medium
+Printer driver needs to be reinstalled,Printer Issues,Low
+Color printing coming out black and white only,Printer Issues,Low
+Printer IP address changed need reconfiguration,Printer Issues,Medium
+Large print job failed halfway through,Printer Issues,Medium
+General IT support request for new software,Other,Low
+Request for ergonomic keyboard and mouse,Other,Low
+Need help setting up video conference room,Other,Medium
+Training session request for new tools,Other,Low
+Asset tag update needed for laptop inventory,Other,Low
+Request to move workstation to different desk,Other,Low
+Help needed with mobile device setup,Other,Medium
+Documentation update for IT procedures,Other,Low
+Feedback about IT service quality,Other,Low
+Miscellaneous technical question from employee,Other,Low
+VPN authentication failed invalid credentials,Network Issues,High
+Teams application not loading video calls,Software Issues,High
+Server room temperature alert sensor failure,Hardware Issues,Critical
+Exchange server mailbox full cannot receive,Email Problems,High
+Admin account compromised need immediate lockdown,Security Issues,Critical
+Printer offline status on all floor printers,Printer Issues,High
+New intern needs domain account and email setup,Account Access,Low
+Wireless access point offline in building B,Network Issues,Critical
+SAP application login page not loading,Software Issues,Critical
+Laptop overheating and shutting down randomly,Hardware Issues,High
+Phishing link clicked by employee need scan,Security Issues,Critical
+Cannot print PDF files only Word documents work,Printer Issues,Medium
+Password reset for SAP ERP system access,Account Access,Medium
+Network switch port failure in data center,Network Issues,Critical
+Zoom crashes during important client meeting,Software Issues,High
+Broken laptop hinge affecting screen display,Hardware Issues,Medium
+Email forwarding rule setup for manager,Email Problems,Low
+Security patch installation required for servers,Security Issues,High
+Request for color laser printer in department,Printer Issues,Low
+Internet bandwidth saturated during peak hours,Network Issues,High
+Visual Studio code editor plugin conflict,Software Issues,Low
+Desktop fan making loud grinding noise,Hardware Issues,Medium
+Outlook calendar sharing permission setup,Email Problems,Low
+Privileged access review for admin accounts,Security Issues,High
+Label printer not printing barcode stickers,Printer Issues,Medium
+Guest WiFi password expired need new credentials,Network Issues,Low
+Python environment setup for data team,Software Issues,Low
+Docking station USB hub ports not working,Hardware Issues,Medium
+Distribution list creation for project team,Email Problems,Low
+Penetration test findings need remediation,Security Issues,Critical
+Plotter printer calibration required for blueprints,Printer Issues,Medium
+BGP routing issue affecting branch office connectivity,Network Issues,Critical
+Docker container deployment failing in CI pipeline,Software Issues,High
+RAID array degraded on file server,Hardware Issues,Critical
+Email archiving policy not applying to mailbox,Email Problems,Medium
+SOC alert for brute force attack on VPN,Security Issues,Critical
+Print spooler service crashed on print server,Printer Issues,High
+New hire onboarding IT equipment request,Other,Low
+SSL certificate renewal for customer portal,Security Issues,High
+Load balancer health check failing for web tier,Network Issues,Critical
+Legacy application incompatible with Windows 11,Software Issues,High
+UPS battery replacement needed in server room,Hardware Issues,High
+Auto-reply setup for vacation leave period,Email Problems,Low
+DLP policy blocking legitimate file transfer,Security Issues,Medium
+3D printer filament jam needs clearing,Printer Issues,Low
+SD-WAN tunnel down between office locations,Network Issues,Critical
+Git repository access permission request,Account Access,Low
+Thermal printer receipt paper needs refill,Printer Issues,Low
+Core switch firmware upgrade scheduled maintenance,Network Issues,High
+Adobe Creative Suite license assignment,Software Issues,Low
+Broken headphone jack on company laptop,Hardware Issues,Low
+Bulk email campaign blocked by spam filter,Email Problems,Medium
+Incident response for suspected data exfiltration,Security Issues,Critical
+Mobile printing setup for iOS devices,Printer Issues,Medium
+Packet loss on VoIP calls affecting call center,Network Issues,High
+Virtual machine snapshot restore needed,Software Issues,High
+GPU failure on engineering workstation,Hardware Issues,High
+Email migration to new Exchange server,Email Problems,High
+Compliance audit finding for password policy,Security Issues,High
+Fax machine not receiving incoming faxes,Printer Issues,Medium
+MPLS circuit outage affecting all branches,Network Issues,Critical
+Power BI dashboard not refreshing data,Software Issues,Medium
+Water damage to laptop from spill incident,Hardware Issues,High
+Shared calendar not visible to team members,Email Problems,Medium
+Zero day vulnerability patch deployment urgent,Security Issues,Critical
+Envelope printer alignment needs adjustment,Printer Issues,Low
