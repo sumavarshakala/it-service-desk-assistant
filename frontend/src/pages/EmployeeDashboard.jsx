@@ -1,152 +1,177 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Ticket, Clock, CheckCircle, AlertCircle, PlusCircle, ArrowRight } from 'lucide-react';
+import { PlusCircle, Clock, CheckCircle, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import Layout from '../components/Layout';
-import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
-import DashboardCard from '../components/DashboardCard';
-import { dashboardAPI } from '../services/api';
+import { dashboardAPI, ticketAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
+import SLAWidget from '../components/SLAWidget';
+
+function getSLAUrgency(ticket) {
+  if (['Resolved', 'Closed'].includes(ticket.status)) return null;
+  const created = new Date(ticket.created_at);
+  const hours = { Critical: 4, High: 8, Medium: 24, Low: 72 };
+  const limit = hours[ticket.priority] || 24;
+  const diff  = (new Date(created.getTime() + limit * 3600000) - new Date()) / 3600000;
+  if (diff <= 0)     return 'breached';
+  if (diff <= 1)     return 'critical';
+  if (diff <= limit * 0.25) return 'warning';
+  return 'ok';
+}
 
 export default function EmployeeDashboard() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const [data,    setData]    = useState(null);
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    dashboardAPI.user().then((res) => setData(res.data)).finally(() => setLoading(false));
+    Promise.all([dashboardAPI.user(), ticketAPI.list({ page: 1, page_size: 10 })])
+      .then(([d, t]) => { setData(d.data); setTickets(t.data.tickets); })
+      .catch(() => toast.error('Failed to load dashboard'))
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
       <Layout title="My Dashboard">
-        <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-          <div className="animate-spin w-8 h-8 border-2 border-brand-blue border-t-transparent rounded-full" />
-          <p className="text-sm text-slate-400 font-semibold">Loading your workspace...</p>
+        <div className="grid grid-cols-3 gap-4 mb-5">
+          {[...Array(3)].map((_, i) => <div key={i} className="card p-4 h-20 animate-pulse"><div className="skeleton h-4 w-24 mb-2" /><div className="skeleton h-6 w-12" /></div>)}
         </div>
+        <div className="card h-64 animate-pulse" />
       </Layout>
     );
   }
 
-  const kpis = [
-    { label: 'Total Tickets', value: data.total_tickets, icon: Ticket, trend: 'up', percentage: 5, color: 'text-brand-blue bg-brand-blue' },
-    { label: 'Open Tickets', value: data.open_tickets, icon: AlertCircle, trend: 'down', percentage: 3, color: 'text-blue-500 bg-blue-500' },
-    { label: 'In Progress', value: data.in_progress_tickets, icon: Clock, trend: 'up', percentage: 10, color: 'text-amber-500 bg-amber-500' },
-    { label: 'Resolved Tickets', value: data.resolved_tickets, icon: CheckCircle, trend: 'up', percentage: 18, color: 'text-emerald-500 bg-emerald-500' },
-  ];
+  const open        = tickets.filter(t => t.status === 'Open').length;
+  const inProgress  = tickets.filter(t => ['In Progress', 'Assigned'].includes(t.status)).length;
+  const resolved    = tickets.filter(t => t.status === 'Resolved').length;
+  const urgent      = tickets.filter(t => ['Critical', 'High'].includes(t.priority) && !['Resolved', 'Closed'].includes(t.status));
+  const firstOpen   = tickets.find(t => !['Resolved', 'Closed'].includes(t.status));
 
   return (
     <Layout
-      title={`Welcome back, ${user?.name?.split(' ')[0] || 'there'} 👋`}
+      title={`Welcome back, ${user?.name?.split(' ')[0]}`}
+      subtitle={new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
       actions={
         <Link to="/tickets/create" className="btn-primary">
-          <PlusCircle className="w-4 h-4" /> New Ticket
+          <PlusCircle className="w-4 h-4" /> New Request
         </Link>
       }
     >
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {kpis.map((card, idx) => (
-          <DashboardCard
-            key={idx}
-            label={card.label}
-            value={card.value}
-            icon={card.icon}
-            trend={card.trend}
-            percentage={card.percentage}
-            color={card.color}
-          />
+      {/* Urgent alert banner */}
+      {urgent.length > 0 && (
+        <div className="mb-4 flex items-center gap-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+          <span>
+            <span className="font-semibold">{urgent.length} urgent ticket{urgent.length > 1 ? 's' : ''}</span>
+            {' '}require your attention — {urgent.map(t => `#${t.id}`).join(', ')}
+          </span>
+          <Link to="/tickets" className="ml-auto text-red-700 font-medium underline text-xs">View tickets</Link>
+        </div>
+      )}
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+        {[
+          { label: 'Total Submitted',  value: tickets.length, icon: ExternalLink,  color: '#2563EB' },
+          { label: 'Open',             value: open,           icon: Clock,          color: '#64748B' },
+          { label: 'In Progress',      value: inProgress,     icon: AlertTriangle,  color: '#F59E0B' },
+          { label: 'Resolved',         value: resolved,       icon: CheckCircle,    color: '#22C55E' },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div key={label} className={`card p-4 border-l-4`} style={{ borderLeftColor: color }}>
+            <p className="text-xs text-gray-500 font-medium">{label}</p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-2xl font-semibold text-gray-900">{value}</p>
+              <Icon className="w-5 h-5 text-gray-300" />
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* Quick action cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Link
-          to="/tickets/create"
-          className="card bg-gradient-to-br from-brand-blue-dark to-brand-blue text-white p-5 flex items-center justify-between rounded-xl hover:opacity-90 transition-opacity shadow-md"
-        >
-          <div>
-            <h4 className="text-sm font-bold">Submit a New Request</h4>
-            <p className="text-blue-200 text-xs mt-1">AI-powered classification included</p>
+      <div className="grid grid-cols-3 gap-4">
+        {/* My Tickets Table */}
+        <div className="col-span-2 card overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+            <h3 className="section-title">My Tickets</h3>
+            <Link to="/tickets" className="text-xs text-primary-600 hover:underline font-medium">View all →</Link>
           </div>
-          <ArrowRight className="w-5 h-5 text-blue-200" />
-        </Link>
-
-        <Link
-          to="/kb"
-          className="card bg-white border border-slate-200 p-5 flex items-center justify-between rounded-xl hover:border-brand-teal/30 hover:shadow-md transition-all"
-        >
-          <div>
-            <h4 className="text-sm font-bold text-slate-800">Knowledge Base</h4>
-            <p className="text-slate-400 text-xs mt-1">Self-service IT guides & FAQs</p>
-          </div>
-          <ArrowRight className="w-5 h-5 text-slate-300" />
-        </Link>
-
-        <Link
-          to="/tickets"
-          className="card bg-white border border-slate-200 p-5 flex items-center justify-between rounded-xl hover:border-brand-blue/30 hover:shadow-md transition-all"
-        >
-          <div>
-            <h4 className="text-sm font-bold text-slate-800">View All My Tickets</h4>
-            <p className="text-slate-400 text-xs mt-1">Track status and updates</p>
-          </div>
-          <ArrowRight className="w-5 h-5 text-slate-300" />
-        </Link>
-      </div>
-
-      {/* Recent Tickets Table */}
-      <div className="card border-slate-200/80">
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-          <h3 className="text-sm font-bold text-slate-800">Recent Activity</h3>
-          <Link to="/tickets" className="text-xs text-brand-blue hover:text-brand-blue-dark font-bold flex items-center gap-1">
-            View All <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {data.recent_tickets?.length === 0 ? (
-          <div className="py-12 text-center flex flex-col items-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
-              <Ticket className="w-8 h-8 text-slate-300" />
-            </div>
-            <p className="text-slate-500 text-sm font-semibold">No tickets found yet</p>
-            <p className="text-slate-400 text-xs">Click "New Ticket" to report an issue and our AI will assist you instantly.</p>
-            <Link to="/tickets/create" className="btn-primary mt-2">
-              <PlusCircle className="w-4 h-4" /> Create First Ticket
-            </Link>
-          </div>
-        ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="data-table">
               <thead>
-                <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider">
-                  <th className="pb-2.5 pr-4">ID</th>
-                  <th className="pb-2.5 pr-4">Title</th>
-                  <th className="pb-2.5 pr-4">Category</th>
-                  <th className="pb-2.5 pr-4">Priority</th>
-                  <th className="pb-2.5 pr-4">Status</th>
-                  <th className="pb-2.5">Created</th>
-                </tr>
+                <tr><th>ID</th><th>Title</th><th>Priority</th><th>Status</th><th>SLA</th><th>Created</th></tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {data.recent_tickets?.map((t) => (
-                  <tr key={t.id} className="hover:bg-slate-50/60 transition-colors group">
-                    <td className="py-3 pr-4">
-                      <Link to={`/tickets/${t.id}`} className="text-brand-blue hover:text-brand-blue-dark font-bold group-hover:underline">
-                        #{t.id}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-4 text-slate-800 font-semibold max-w-xs truncate">{t.title}</td>
-                    <td className="py-3 pr-4 text-slate-500">{t.category}</td>
-                    <td className="py-3 pr-4"><PriorityBadge priority={t.priority} /></td>
-                    <td className="py-3 pr-4"><StatusBadge status={t.status} /></td>
-                    <td className="py-3 text-slate-400 font-semibold">{new Date(t.created_at).toLocaleDateString()}</td>
-                  </tr>
-                ))}
+              <tbody>
+                {tickets.length === 0 && (
+                  <tr><td colSpan={6} className="text-center py-8 text-gray-400 text-sm">No tickets yet. <Link to="/tickets/create" className="text-primary-600 hover:underline">Submit your first request</Link></td></tr>
+                )}
+                {tickets.map(t => {
+                  const sla = getSLAUrgency(t);
+                  return (
+                    <tr key={t.id}>
+                      <td>
+                        <Link to={`/tickets/${t.id}`} className="font-mono text-xs text-primary-600 hover:underline font-medium">#{String(t.id).padStart(4, '0')}</Link>
+                      </td>
+                      <td>
+                        <Link to={`/tickets/${t.id}`} className="text-gray-900 hover:text-primary-600 font-medium max-w-xs block truncate">
+                          {t.title}
+                        </Link>
+                        <span className="text-xs text-gray-400">{t.category}</span>
+                      </td>
+                      <td><PriorityBadge priority={t.priority} /></td>
+                      <td><StatusBadge status={t.status} /></td>
+                      <td>
+                        {sla ? (
+                          <span className={`text-xs font-medium ${sla === 'ok' ? 'text-green-600' : sla === 'warning' ? 'text-amber-600' : 'text-red-600'}`}>
+                            {sla === 'ok' ? 'On Track' : sla === 'warning' ? 'Warning' : sla === 'breached' ? 'Breached' : 'Critical'}
+                          </span>
+                        ) : <span className="text-xs text-gray-400">—</span>}
+                      </td>
+                      <td className="text-xs text-gray-400">
+                        {new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-        )}
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-4">
+          {firstOpen && (
+            <div className="card p-4">
+              <h3 className="section-title mb-3">SLA Status</h3>
+              <SLAWidget ticket={firstOpen} />
+            </div>
+          )}
+
+          {/* Quick actions */}
+          <div className="card p-4">
+            <h3 className="section-title mb-3">Quick Actions</h3>
+            <div className="space-y-2">
+              {[
+                { label: 'Submit New Request', to: '/tickets/create', primary: true },
+                { label: 'Browse Knowledge Base', to: '/kb' },
+                { label: 'Take a Wellness Break', to: '/wellness' },
+              ].map(({ label, to, primary }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className={`block text-sm px-3 py-2 rounded border transition-colors ${
+                    primary
+                      ? 'bg-primary-600 text-white border-primary-700 hover:bg-primary-700'
+                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </Layout>
   );

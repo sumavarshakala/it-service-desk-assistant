@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 logging.basicConfig(level=logging.DEBUG, format="%(levelname)s %(name)s: %(message)s")
 
 from app.database.connection import engine, Base, settings
-from app.routes import auth, tickets, dashboard, analytics
+from app.routes import auth, tickets, dashboard, analytics, wellness
 
 app = FastAPI(
     title="Intelligent IT Service Desk Assistant",
@@ -28,6 +28,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(tickets.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(analytics.router, prefix="/api")
+app.include_router(wellness.router, prefix="/api")
 
 
 @app.on_event("startup")

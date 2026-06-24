@@ -61,4 +61,11 @@ export const analyticsAPI = {
   users: () => api.get('/users'),
 };
 
+export const wellnessAPI = {
+  getProfile: () => api.get('/wellness/profile'),
+  recordSession: (session_type, duration_minutes) => api.post(`/wellness/session?session_type=${encodeURIComponent(session_type)}&duration_minutes=${duration_minutes}`),
+  recordGameScore: (game_name, score, result) => api.post(`/wellness/game-score?game_name=${encodeURIComponent(game_name)}&score=${score}&result=${encodeURIComponent(result)}`),
+  getLeaderboard: () => api.get('/wellness/leaderboard'),
+};
+
 export default api;

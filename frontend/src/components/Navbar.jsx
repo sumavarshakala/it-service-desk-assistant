@@ -1,247 +1,230 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Search, Bell, User, LogOut, ChevronDown, Shield, UserCheck, Ticket, FileText } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Search, Bell, ChevronDown, LogOut, Settings, BookOpen, X, Ticket, AlertTriangle, Coffee, Info, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { ticketAPI } from '../services/api';
+
+const MOCK_NOTIFICATIONS = [
+  { id: 1, title: 'SLA Warning – Ticket #1042', body: '30 minutes until SLA breach on Login Issue ticket.', type: 'sla', time: '10m ago', unread: true },
+  { id: 2, title: 'Need a break?', body: "You've been active for 90 minutes. Visit the Wellness Hub to recharge.", type: 'wellness', time: 'Just now', unread: true },
+  { id: 3, title: 'Ticket #1043 assigned to you', body: 'VPN Access request from Marketing.', type: 'ticket', time: '1h ago', unread: true },
+  { id: 4, title: 'Ticket #1029 resolved', body: 'Email config issue closed by Admin.', type: 'resolved', time: '3h ago', unread: false },
+  { id: 5, title: 'Maintenance window tonight 11 PM', body: 'Expected downtime: ~30 minutes.', type: 'system', time: '5h ago', unread: false },
+];
+
+const TYPE_ICON = {
+  sla:      { icon: AlertTriangle, cls: 'text-amber-600' },
+  wellness: { icon: Coffee,        cls: 'text-purple-600' },
+  ticket:   { icon: Ticket,        cls: 'text-primary-600' },
+  resolved: { icon: CheckCircle,   cls: 'text-green-600' },
+  system:   { icon: Info,          cls: 'text-gray-500' },
+};
+
+function Breadcrumb() {
+  const location = useLocation();
+  const segments = location.pathname.split('/').filter(Boolean);
+  const labels = { dashboard: 'Dashboard', tickets: 'Tickets', create: 'New Request', kb: 'Knowledge Base', analytics: 'Reports', users: 'Users', settings: 'Settings', wellness: 'Wellness Hub', 'activity-logs': 'Audit Logs' };
+  return (
+    <nav className="flex items-center gap-1 text-xs text-gray-500">
+      <span className="text-gray-400">IT Service Desk</span>
+      {segments.map((seg, i) => (
+        <span key={i} className="flex items-center gap-1">
+          <span className="text-gray-300">/</span>
+          <span className={i === segments.length - 1 ? 'text-gray-700 font-medium' : ''}>
+            {labels[seg] || (isNaN(seg) ? seg : `#${seg}`)}
+          </span>
+        </span>
+      ))}
+    </nav>
+  );
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-
-  const searchRef = useRef(null);
-  const notifyRef = useRef(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const searchRef  = useRef(null);
+  const notifRef   = useRef(null);
   const profileRef = useRef(null);
 
-  // Mock Notifications for corporate feel
-  const notifications = [
-    { id: 1, title: 'New response on ticket #12', type: 'comment', time: '10m ago', unread: true },
-    { id: 2, title: 'System maintenance scheduled this Friday at 10:00 PM EST', type: 'system', time: '2h ago', unread: true },
-    { id: 3, title: 'Your ticket #15 has been marked as Resolved', type: 'resolve', time: '5h ago', unread: false },
-  ];
-
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unread  = notifications.filter(n => n.unread).length;
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setShowSearchDropdown(false);
-      }
-      if (notifyRef.current && !notifyRef.current.contains(event.target)) {
-        setShowNotifications(false);
-      }
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setShowProfileMenu(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const handler = (e) => {
+      if (!searchRef.current?.contains(e.target))  setShowSearch(false);
+      if (!notifRef.current?.contains(e.target))   setShowNotifs(false);
+      if (!profileRef.current?.contains(e.target)) setShowProfile(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
     if (searchQuery.trim().length > 1) {
-      const delayDebounce = setTimeout(() => {
+      const t = setTimeout(() => {
         ticketAPI.list({ search: searchQuery, page_size: 5 })
-          .then((res) => {
-            setSearchResults(res.data.tickets);
-            setShowSearchDropdown(true);
-          })
+          .then(res => { setSearchResults(res.data.tickets); setShowSearch(true); })
           .catch(() => setSearchResults([]));
       }, 300);
-      return () => clearTimeout(delayDebounce);
+      return () => clearTimeout(t);
     } else {
       setSearchResults([]);
-      setShowSearchDropdown(false);
+      setShowSearch(false);
     }
   }, [searchQuery]);
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      setShowSearchDropdown(false);
-      navigate(`/tickets?search=${encodeURIComponent(searchQuery)}`);
-    }
-  };
-
-  const handleResultClick = (ticketId) => {
-    setSearchQuery('');
-    setShowSearchDropdown(false);
-    navigate(`/tickets/${ticketId}`);
-  };
+  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  const dismiss = (id, e) => { e.stopPropagation(); setNotifications(prev => prev.filter(n => n.id !== id)); };
 
   return (
-    <header className="sticky top-0 z-20 bg-white/85 backdrop-blur-md border-b border-slate-200/80 px-8 py-3.5 flex items-center justify-between shadow-sm">
-      {/* Search Bar */}
-      <div className="w-96 relative" ref={searchRef}>
-        <form onSubmit={handleSearchSubmit}>
+    <header className="sticky top-0 z-20 h-11 bg-white border-b border-gray-200 flex items-center justify-between px-5 gap-4">
+      {/* Left: Breadcrumb */}
+      <Breadcrumb />
+
+      {/* Right: Search + Actions */}
+      <div className="flex items-center gap-2">
+        {/* Search */}
+        <div ref={searchRef} className="relative">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search tickets by ID, title, keywords..."
+              placeholder="Search tickets..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-lg pl-9 pr-4 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all"
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { setShowSearch(false); navigate(`/tickets?search=${encodeURIComponent(searchQuery)}`); }}}
+              className="w-56 bg-gray-50 border border-gray-300 rounded pl-8 pr-3 py-1 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-colors"
             />
           </div>
-        </form>
 
-        {showSearchDropdown && (
-          <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden max-h-80">
-            <div className="p-2 border-b border-slate-100 bg-slate-50">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Search Results</span>
-            </div>
-            {searchResults.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-400">No matching tickets found</div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {searchResults.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => handleResultClick(t.id)}
-                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors flex items-center gap-3"
-                  >
-                    <Ticket className="w-4 h-4 text-brand-blue shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-900 truncate">#{t.id} - {t.title}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-slate-100 text-slate-500 capitalize shrink-0">{t.status}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 truncate mt-0.5">{t.category}</p>
-                    </div>
-                  </button>
-                ))}
+          {showSearch && (
+            <div className="absolute right-0 mt-1 w-80 bg-white border border-gray-200 rounded shadow-dropdown z-50 animate-slide-down">
+              <div className="px-3 py-2 border-b border-gray-100">
+                <span className="text-xs font-medium text-gray-500">Search results</span>
               </div>
-            )}
-            <div className="p-2 border-t border-slate-100 text-center bg-slate-50">
-              <button
-                onClick={() => {
-                  setShowSearchDropdown(false);
-                  navigate(`/tickets?search=${encodeURIComponent(searchQuery)}`);
-                }}
-                className="text-[11px] text-brand-blue hover:text-brand-blue-dark font-semibold"
-              >
-                View all results for "{searchQuery}"
-              </button>
+              {searchResults.length === 0 ? (
+                <div className="px-3 py-4 text-center text-sm text-gray-400">No tickets found</div>
+              ) : (
+                <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+                  {searchResults.map(t => (
+                    <button key={t.id} onClick={() => { setSearchQuery(''); setShowSearch(false); navigate(`/tickets/${t.id}`); }}
+                      className="w-full text-left px-3 py-2.5 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs font-mono text-primary-600 font-semibold mt-0.5">#{t.id}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-800 truncate">{t.title}</p>
+                          <p className="text-xs text-gray-400">{t.category} · {t.status}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="px-3 py-2 border-t border-gray-100 bg-gray-50">
+                <button onClick={() => { setShowSearch(false); navigate(`/tickets?search=${encodeURIComponent(searchQuery)}`); }}
+                  className="text-xs text-primary-600 font-medium hover:underline">
+                  View all results →
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Right Navigation controls */}
-      <div className="flex items-center gap-4">
         {/* Notifications */}
-        <div className="relative" ref={notifyRef}>
+        <div ref={notifRef} className="relative">
           <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-all relative"
+            onClick={() => { setShowNotifs(!showNotifs); setShowProfile(false); }}
+            className="relative p-1.5 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
           >
-            <Bell className="w-[19px] h-[19px]" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 border border-white text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                {unreadCount}
-              </span>
+            <Bell className="w-4 h-4" />
+            {unread > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full border border-white" />
             )}
           </button>
 
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
-              <div className="p-3 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700">Notifications</span>
-                <span className="text-[10px] text-brand-blue font-semibold cursor-pointer hover:underline">Mark all read</span>
+          {showNotifs && (
+            <div className="absolute right-0 mt-1 w-80 bg-white border border-gray-200 rounded shadow-dropdown z-50 animate-slide-down">
+              <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                <span className="text-sm font-semibold text-gray-800">Notifications</span>
+                {unread > 0 && (
+                  <button onClick={markAllRead} className="text-xs text-primary-600 hover:underline font-medium">
+                    Mark all read
+                  </button>
+                )}
               </div>
-              <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-                {notifications.map((n) => (
-                  <div key={n.id} className={`p-3 hover:bg-slate-50 transition-colors ${n.unread ? 'bg-brand-blue/5' : ''}`}>
-                    <div className="flex gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${n.unread ? 'bg-brand-blue' : 'bg-transparent'}`} />
+              <div className="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                {notifications.map(n => {
+                  const cfg = TYPE_ICON[n.type] || TYPE_ICON.system;
+                  const Icon = cfg.icon;
+                  return (
+                    <div key={n.id} className={`flex gap-3 px-4 py-3 hover:bg-gray-50 group ${n.unread ? 'bg-blue-50/30' : ''}`}>
+                      <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${cfg.cls}`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-700 leading-snug">{n.title}</p>
-                        <span className="text-[10px] text-slate-400 mt-1 block">{n.time}</span>
+                        <p className={`text-sm leading-snug ${n.unread ? 'font-medium text-gray-900' : 'text-gray-700'}`}>{n.title}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{n.body}</p>
+                        <p className="text-xs text-gray-400 mt-1">{n.time}</p>
                       </div>
+                      <button onClick={e => dismiss(n.id, e)}
+                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-gray-500 transition-opacity shrink-0">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-              <div className="p-2 border-t border-slate-100 text-center bg-slate-50">
-                <Link to="/settings" onClick={() => setShowNotifications(false)} className="text-xs text-slate-500 hover:text-slate-700 font-medium">
-                  Configure alerts
+              <div className="px-4 py-2 border-t border-gray-100 bg-gray-50">
+                <Link to="/settings" onClick={() => setShowNotifs(false)} className="text-xs text-gray-500 hover:text-gray-700">
+                  Notification preferences
                 </Link>
               </div>
             </div>
           )}
         </div>
 
-        {/* User profile dropdown & Role badge */}
-        <div className="h-6 w-px bg-slate-200" />
+        <div className="w-px h-5 bg-gray-200" />
 
-        <div className="relative" ref={profileRef}>
+        {/* Profile */}
+        <div ref={profileRef} className="relative">
           <button
-            onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center gap-2 hover:bg-slate-50 p-1 rounded-lg transition-all"
+            onClick={() => { setShowProfile(!showProfile); setShowNotifs(false); }}
+            className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-gray-100 transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-brand-blue/10 border border-brand-blue/20 text-brand-blue font-bold text-sm flex items-center justify-center">
-              {user?.name?.charAt(0)}
+            <div className="w-6 h-6 rounded-full bg-primary-600 text-white text-xs font-semibold flex items-center justify-center">
+              {initials}
             </div>
-            <div className="hidden md:flex flex-col items-start text-left">
-              <span className="text-xs font-semibold text-slate-900 leading-none">{user?.name}</span>
-              <span className="text-[10px] text-slate-400 mt-0.5">{user?.department}</span>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="text-sm font-medium text-gray-700 hidden md:block">{user?.name?.split(' ')[0]}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400 hidden md:block" />
           </button>
 
-          {showProfileMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
-              <div className="p-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-full bg-brand-blue/15 text-brand-blue font-bold text-sm flex items-center justify-center shrink-0">
-                  {user?.name?.charAt(0)}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 truncate">{user?.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{user?.email}</p>
-                </div>
+          {showProfile && (
+            <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded shadow-dropdown z-50 animate-slide-down">
+              <div className="px-3 py-3 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{user?.email}</p>
+                <span className={`inline-flex items-center mt-1.5 px-1.5 py-0.5 rounded text-xs font-medium ${user?.role === 'admin' ? 'bg-red-50 text-red-700' : 'bg-primary-50 text-primary-700'}`}>
+                  {user?.role === 'admin' ? 'Administrator' : 'Employee'}
+                </span>
               </div>
-              <div className="p-1.5 divide-y divide-slate-100">
-                <div className="py-1">
-                  <div className="px-3 py-1 text-[10px] text-slate-400 font-bold uppercase tracking-wider">Credentials</div>
-                  <div className="px-3 py-1.5 flex items-center justify-between">
-                    <span className="text-xs text-slate-600">Access Level</span>
-                    {user?.role === 'admin' ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-100">
-                        <Shield className="w-3 h-3" /> Admin
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
-                        <UserCheck className="w-3 h-3" /> Employee
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="py-1.5">
-                  <Link
-                    to="/settings"
-                    onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-md transition-colors"
-                  >
-                    <User className="w-4 h-4 text-slate-400" />
-                    Account Settings
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      logout();
-                      navigate('/login');
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-md transition-colors text-left"
-                  >
-                    <LogOut className="w-4 h-4 text-rose-400" />
-                    Sign Out
-                  </button>
-                </div>
+              <div className="p-1">
+                <Link to="/settings" onClick={() => setShowProfile(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
+                  <Settings className="w-4 h-4 text-gray-400" /> Account Settings
+                </Link>
+                <Link to="/kb" onClick={() => setShowProfile(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
+                  <BookOpen className="w-4 h-4 text-gray-400" /> Help Center
+                </Link>
+                <hr className="border-gray-100 my-1" />
+                <button onClick={() => { setShowProfile(false); logout(); navigate('/login'); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition-colors">
+                  <LogOut className="w-4 h-4" /> Sign Out
+                </button>
               </div>
             </div>
           )}

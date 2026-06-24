@@ -1,209 +1,257 @@
 import { useEffect, useState } from 'react';
-import { Ticket, AlertTriangle, CheckCircle, Clock, Download, Play, BarChart3, Activity } from 'lucide-react';
+import { Ticket, AlertTriangle, CheckCircle, Clock, Download, RefreshCw,
+  TrendingUp, TrendingDown, BarChart2, Users, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { CategoryChart, PriorityChart, TrendChart, DepartmentChart, ResolutionChart } from '../charts/DashboardCharts';
 import { dashboardAPI, ticketAPI, analyticsAPI } from '../services/api';
-import DashboardCard from '../components/DashboardCard';
-import ChartWidget from '../components/ChartWidget';
+import { StatusBadge, PriorityBadge } from '../components/StatusBadge';
+import { CategoryChart, PriorityChart, TrendChart, DepartmentChart } from '../charts/DashboardCharts';
+
+function KpiTile({ label, value, icon: Icon, trend, pct, borderColor }) {
+  const isUp = trend === 'up';
+  return (
+    <div className={`card p-4 border-l-4`} style={{ borderLeftColor: borderColor }}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-medium text-gray-500">{label}</p>
+          <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
+        </div>
+        <Icon className="w-5 h-5 text-gray-400 mt-0.5" />
+      </div>
+      <div className="flex items-center gap-1 mt-2">
+        {isUp ? <TrendingUp className="w-3 h-3 text-green-500" /> : <TrendingDown className="w-3 h-3 text-red-500" />}
+        <span className={`text-xs font-medium ${isUp ? 'text-green-600' : 'text-red-600'}`}>{pct}%</span>
+        <span className="text-xs text-gray-400">vs last period</span>
+      </div>
+    </div>
+  );
+}
+
+function RecentTicketsTable({ tickets }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+        <h3 className="section-title">Recent Tickets</h3>
+        <Link to="/tickets" className="text-xs text-primary-600 hover:underline font-medium">View all →</Link>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {tickets.slice(0, 8).map(t => (
+              <tr key={t.id}>
+                <td>
+                  <Link to={`/tickets/${t.id}`} className="font-mono text-primary-600 hover:underline text-xs font-medium">
+                    #{String(t.id).padStart(4, '0')}
+                  </Link>
+                </td>
+                <td>
+                  <Link to={`/tickets/${t.id}`} className="text-gray-900 hover:text-primary-600 font-medium line-clamp-1 max-w-xs block">
+                    {t.title}
+                  </Link>
+                </td>
+                <td className="text-gray-500 text-xs">{t.category}</td>
+                <td><PriorityBadge priority={t.priority} /></td>
+                <td><StatusBadge status={t.status} /></td>
+                <td className="text-gray-400 text-xs">
+                  {new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </td>
+              </tr>
+            ))}
+            {tickets.length === 0 && (
+              <tr><td colSpan={6} className="text-center py-8 text-gray-400 text-sm">No tickets found</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
-  const [dashboardData, setDashboardData] = useState(null);
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [dashData, setDashData] = useState(null);
+  const [analData, setAnalData] = useState(null);
+  const [tickets,  setTickets]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true); else setRefreshing(true);
     try {
-      const [dashRes, analRes] = await Promise.all([
+      const [d, a, t] = await Promise.all([
         dashboardAPI.admin(),
-        analyticsAPI.get()
+        analyticsAPI.get(),
+        ticketAPI.list({ page: 1, page_size: 8 }),
       ]);
-      setDashboardData(dashRes.data);
-      setAnalyticsData(analRes.data);
-    } catch (err) {
-      toast.error('Failed to load dashboard statistics');
-    } finally {
-      setLoading(false);
-    }
+      setDashData(d.data);
+      setAnalData(a.data);
+      setTickets(t.data.tickets);
+    } catch {
+      toast.error('Failed to load dashboard');
+    } finally { setLoading(false); setRefreshing(false); }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  const handleExport = async (format) => {
+  const handleExport = async (fmt) => {
     try {
-      const res = format === 'csv' ? await ticketAPI.exportCSV() : await ticketAPI.exportExcel();
+      const res = fmt === 'csv' ? await ticketAPI.exportCSV() : await ticketAPI.exportExcel();
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       a.href = url;
-      a.download = `tickets_report_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`;
+      a.download = `tickets.${fmt === 'csv' ? 'csv' : 'xlsx'}`;
       a.click();
-      toast.success(`${format.toUpperCase()} report exported`);
-    } catch {
-      toast.error('Export failed');
-    }
+      toast.success(`Exported as ${fmt.toUpperCase()}`);
+    } catch { toast.error('Export failed'); }
   };
 
   if (loading) {
     return (
-      <Layout title="Admin Dashboard">
-        <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-          <div className="animate-spin w-8 h-8 border-3 border-brand-blue border-t-transparent rounded-full" />
-          <p className="text-sm text-slate-400 font-semibold">Preparing executive dashboard analytics...</p>
+      <Layout title="System Overview">
+        <div className="grid grid-cols-5 gap-4 mb-5">
+          {[...Array(5)].map((_, i) => <div key={i} className="card p-4 h-24 animate-pulse"><div className="skeleton h-4 w-24 mb-2" /><div className="skeleton h-7 w-16" /></div>)}
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => <div key={i} className="card p-4 h-64 animate-pulse"><div className="skeleton h-full w-full" /></div>)}
         </div>
       </Layout>
     );
   }
 
-  // Compile exact metrics from analyticsData status distribution
-  const statusDist = analyticsData?.status_distribution || {};
-  
-  const openCount = statusDist['Open'] || 0;
-  const inProgressCount = (statusDist['In Progress'] || 0) + (statusDist['Assigned'] || 0);
-  const resolvedCount = statusDist['Resolved'] || 0;
-  const criticalCount = dashboardData?.critical_tickets || 0;
-  const totalCount = dashboardData?.total_tickets || 0;
+  const statusDist  = analData?.status_distribution || {};
+  const open        = statusDist['Open'] || 0;
+  const inProgress  = (statusDist['In Progress'] || 0) + (statusDist['Assigned'] || 0);
+  const resolved    = statusDist['Resolved'] || 0;
+  const critical    = dashData?.critical_tickets || 0;
+  const total       = dashData?.total_tickets || 0;
+  const resRate     = dashData?.resolution_rate || 0;
+  const avgRes      = dashData?.avg_resolution_hours || 0;
 
-  const kpiCards = [
-    { label: 'Total Tickets', value: totalCount, icon: Ticket, trend: 'up', percentage: 8, color: 'text-brand-blue bg-brand-blue' },
-    { label: 'Open Tickets', value: openCount, icon: Clock, trend: 'down', percentage: 4, color: 'text-blue-500 bg-blue-500' },
-    { label: 'In Progress', value: inProgressCount, icon: Play, trend: 'up', percentage: 12, color: 'text-amber-500 bg-amber-500' },
-    { label: 'Resolved Tickets', value: resolvedCount, icon: CheckCircle, trend: 'up', percentage: 15, color: 'text-emerald-500 bg-emerald-500' },
-    { label: 'Critical Tickets', value: criticalCount, icon: AlertTriangle, trend: 'down', percentage: 22, color: 'text-rose-500 bg-rose-500' },
+  const KPIs = [
+    { label: 'Total Tickets',    value: total,      icon: Ticket,        trend: 'up',   pct: 8,  borderColor: '#2563EB' },
+    { label: 'Open',             value: open,       icon: Clock,         trend: 'down', pct: 4,  borderColor: '#64748B' },
+    { label: 'In Progress',      value: inProgress, icon: Activity,      trend: 'up',   pct: 12, borderColor: '#F59E0B' },
+    { label: 'Resolved',         value: resolved,   icon: CheckCircle,   trend: 'up',   pct: 15, borderColor: '#22C55E' },
+    { label: 'Critical',         value: critical,   icon: AlertTriangle, trend: 'down', pct: 22, borderColor: '#EF4444' },
+  ];
+
+  const TOP_CATS = [
+    { label: 'Network Issues',   pct: 28 },
+    { label: 'Email Problems',   pct: 22 },
+    { label: 'Password Reset',   pct: 18 },
+    { label: 'Hardware Issues',  pct: 16 },
+    { label: 'Software Install', pct: 12 },
   ];
 
   return (
     <Layout
       title="System Overview"
+      subtitle={`${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}
       actions={
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <button onClick={() => fetchData(true)} disabled={refreshing} className="btn-ghost">
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
           <button onClick={() => handleExport('csv')} className="btn-secondary">
-            <Download className="w-4 h-4" /> Export CSV
+            <Download className="w-4 h-4" /> CSV
           </button>
           <button onClick={() => handleExport('excel')} className="btn-primary">
-            <Download className="w-4 h-4" /> Export Excel
+            <Download className="w-4 h-4" /> Excel
           </button>
         </div>
       }
     >
-      {/* Executive KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        {kpiCards.map((card, idx) => (
-          <DashboardCard
-            key={idx}
-            label={card.label}
-            value={card.value}
-            icon={card.icon}
-            trend={card.trend}
-            percentage={card.percentage}
-            color={card.color}
-          />
+      {/* KPI Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-5">
+        {KPIs.map(k => <KpiTile key={k.label} {...k} />)}
+      </div>
+
+      {/* Secondary metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+        {[
+          { label: 'Avg Resolution Time', value: `${avgRes} hrs`,   icon: Clock },
+          { label: 'SLA Resolution Rate', value: `${resRate}%`,     icon: TrendingUp },
+          { label: 'Active Categories',   value: Object.keys(dashData.tickets_by_category || {}).length, icon: BarChart2 },
+          { label: 'Active Departments',  value: Object.keys(dashData.department_distribution || {}).length, icon: Users },
+        ].map(({ label, value, icon: Icon }) => (
+          <div key={label} className="card p-3 flex items-center gap-3">
+            <Icon className="w-5 h-5 text-gray-400 shrink-0" />
+            <div>
+              <p className="text-xs text-gray-500">{label}</p>
+              <p className="text-base font-semibold text-gray-900">{value}</p>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* SLA & Time Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-        <div className="card border-slate-200/80 bg-slate-50/20 p-4 flex items-center justify-between shadow-sm">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Average Resolution Time</span>
-            <span className="text-2xl font-extrabold text-slate-800 tracking-tight mt-1 block">
-              {dashboardData.avg_resolution_hours || '0.0'} Hours
-            </span>
-          </div>
-          <div className="w-10 h-10 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center">
-            <Clock className="w-5 h-5" />
-          </div>
+      {/* Charts + Recent Activity */}
+      <div className="grid grid-cols-3 gap-4 mb-5">
+        <div className="card p-4 col-span-2">
+          <h3 className="section-title mb-3">Ticket Volume Trend</h3>
+          <TrendChart data={dashData.monthly_trends} />
         </div>
-
-        <div className="card border-slate-200/80 bg-slate-50/20 p-4 flex items-center justify-between shadow-sm">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">SLA Resolution Rate</span>
-            <span className="text-2xl font-extrabold text-emerald-600 tracking-tight mt-1 block">
-              {dashboardData.resolution_rate || '0.0'}%
-            </span>
-          </div>
-          <div className="w-10 h-10 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
-            <CheckCircle className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="card border-slate-200/80 bg-slate-50/20 p-4 flex items-center justify-between shadow-sm">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Categories Active</span>
-            <span className="text-2xl font-extrabold text-slate-800 tracking-tight mt-1 block">
-              {Object.keys(dashboardData.tickets_by_category || {}).length} Active
-            </span>
-          </div>
-          <div className="w-10 h-10 bg-brand-blue/5 border border-brand-blue/10 text-brand-blue-dark rounded-lg flex items-center justify-center">
-            <BarChart3 className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Analytics Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <ChartWidget title="Tickets by Category" subtitle="Distribution across departments and services">
-          <CategoryChart data={dashboardData.tickets_by_category} />
-        </ChartWidget>
-
-        <ChartWidget title="Tickets by Priority" subtitle="Total open tickets filtered by priority level">
-          <PriorityChart data={dashboardData.tickets_by_priority} />
-        </ChartWidget>
-
-        <ChartWidget title="Monthly Ticket Trends" subtitle="Incoming requests volumes over the past 6 months">
-          <TrendChart data={dashboardData.monthly_trends} />
-        </ChartWidget>
-
-        <ChartWidget title="Resolution Performance Rate" subtitle="Percentage of tickets closed within SLA">
-          <ResolutionChart rate={dashboardData.resolution_rate} />
-        </ChartWidget>
-      </div>
-
-      {/* Distribution & Activity row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ChartWidget 
-          title="Department Distribution" 
-          subtitle="Ticket submissions grouped by company department"
-          className="lg:col-span-2"
-        >
-          <DepartmentChart data={dashboardData.department_distribution} />
-        </ChartWidget>
-
-        {/* Recent Activity Card */}
-        <div className="card border-slate-200 flex flex-col h-full">
-          <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
-            <div className="p-1.5 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-600">
-              <Activity className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Recent Activity Logs</h4>
-              <p className="text-[10px] text-slate-400">Real-time action stream</p>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto space-y-3.5 max-h-60 pr-1">
-            {dashboardData.recent_activity?.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-xs">No recent actions logged.</div>
-            ) : (
-              dashboardData.recent_activity?.map((log) => (
-                <div key={log.id} className="flex gap-3 text-xs border-b border-slate-100 pb-2.5 last:border-0 last:pb-0">
-                  <div className="w-1.5 h-1.5 bg-brand-blue rounded-full mt-1.5 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-slate-705 leading-snug font-medium">{log.action}</p>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400 font-semibold">
-                      <span className="text-slate-650">{log.user_name}</span>
-                      <span>•</span>
-                      <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
-                    </div>
-                  </div>
+        <div className="card p-4">
+          <h3 className="section-title mb-3">Top Issue Categories</h3>
+          <div className="space-y-3">
+            {TOP_CATS.map((c, i) => (
+              <div key={c.label}>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-gray-600 font-medium">{c.label}</span>
+                  <span className="text-gray-900 font-semibold">{c.pct}%</span>
                 </div>
-              ))
-            )}
+                <div className="progress-track">
+                  <div className="progress-fill bg-primary-600" style={{ width: `${c.pct}%` }} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Second charts row */}
+      <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="card p-4">
+          <h3 className="section-title mb-3">Category Distribution</h3>
+          <CategoryChart data={dashData.tickets_by_category} />
+        </div>
+        <div className="card p-4">
+          <h3 className="section-title mb-3">Priority Breakdown</h3>
+          <PriorityChart data={dashData.tickets_by_priority} />
+        </div>
+      </div>
+
+      {/* Recent Tickets Table */}
+      <RecentTicketsTable tickets={tickets} />
+
+      {/* Activity stream */}
+      {dashData.recent_activity?.length > 0 && (
+        <div className="card mt-4 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h3 className="section-title">Recent Activity</h3>
+          </div>
+          <div className="divide-y divide-gray-50 max-h-56 overflow-y-auto">
+            {dashData.recent_activity.map((log, i) => (
+              <div key={log.id || i} className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors">
+                <div className="w-6 h-6 rounded-full bg-primary-100 text-primary-700 text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5">
+                  {log.user_name?.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-800">{log.action}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {log.user_name} · {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

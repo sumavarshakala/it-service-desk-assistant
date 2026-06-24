@@ -41,6 +41,10 @@ class User(Base):
     assigned_tickets = relationship("Ticket", back_populates="admin", foreign_keys="Ticket.assigned_admin")
     comments = relationship("Comment", back_populates="user")
     activity_logs = relationship("ActivityLog", back_populates="user")
+    wellness_profile = relationship("WellnessProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    focus_sessions = relationship("FocusSession", back_populates="user", cascade="all, delete-orphan")
+    game_scores = relationship("GameScore", back_populates="user", cascade="all, delete-orphan")
+    badges = relationship("Badge", back_populates="user", cascade="all, delete-orphan")
 
 
 class Ticket(Base):
@@ -91,3 +95,55 @@ class ActivityLog(Base):
 
     user = relationship("User", back_populates="activity_logs")
     ticket = relationship("Ticket", back_populates="activity_logs")
+
+
+# --- Wellness Hub Models ---
+
+class WellnessProfile(Base):
+    __tablename__ = "wellness_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    total_points = Column(Integer, default=0)
+    current_streak = Column(Integer, default=0)
+    focus_hours_weekly = Column(Float, default=0.0)
+    wellness_score = Column(Integer, default=100) # 0-100 score
+    last_active = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="wellness_profile")
+
+
+class FocusSession(Base):
+    __tablename__ = "focus_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    session_type = Column(String(50), nullable=False) # e.g., 'Pomodoro', 'Deep Work 30m'
+    duration_minutes = Column(Integer, nullable=False)
+    completed_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="focus_sessions")
+
+
+class GameScore(Base):
+    __tablename__ = "game_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    game_name = Column(String(100), nullable=False) # 'TicTacToe', 'Trivia', etc.
+    score = Column(Integer, default=0)
+    result = Column(String(50), nullable=True) # 'Win', 'Loss', 'Draw'
+    played_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="game_scores")
+
+
+class Badge(Base):
+    __tablename__ = "badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    badge_name = Column(String(100), nullable=False) # 'Coffee Break Champion', 'Focus Master'
+    earned_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="badges")

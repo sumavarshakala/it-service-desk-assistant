@@ -1,25 +1,74 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Ticket, PlusCircle, BarChart3, Users,
-  Settings, LogOut, Headphones, BookOpen, ShieldCheck, Lock, Activity
+  LayoutDashboard, Ticket, PlusCircle, BarChart2, Users,
+  Settings, LogOut, BookOpen, ShieldCheck, Activity,
+  Coffee, ChevronDown, Headphones
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
+
+const NAV_SECTIONS = [
+  {
+    label: 'MAIN',
+    adminOnly: false,
+    links: [
+      { to: '/dashboard',      icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/tickets/create', icon: PlusCircle,      label: 'New Request' },
+      { to: '/tickets',        icon: Ticket,          label: 'My Tickets' },
+      { to: '/kb',             icon: BookOpen,        label: 'Knowledge Base' },
+      { to: '/wellness',       icon: Coffee,          label: 'Wellness Hub' },
+    ],
+  },
+  {
+    label: 'ADMIN',
+    adminOnly: true,
+    links: [
+      { to: '/analytics',     icon: BarChart2,    label: 'Reports' },
+      { to: '/users',         icon: Users,        label: 'Users' },
+      { to: '/activity-logs', icon: Activity,     label: 'Audit Logs' },
+    ],
+  },
+  {
+    label: 'SYSTEM',
+    adminOnly: false,
+    links: [
+      { to: '/settings', icon: Settings, label: 'Settings' },
+    ],
+  },
+];
+
+function NavItem({ to, icon: Icon, label }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === '/dashboard'}
+      className={({ isActive }) =>
+        `nav-link ${isActive ? 'nav-link-active' : 'nav-link-inactive'}`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <span className="absolute left-0 top-1 bottom-1 w-0.5 bg-blue-400 rounded-r" />
+          )}
+          <Icon className="w-4 h-4 shrink-0" />
+          <span className="text-sm">{label}</span>
+        </>
+      )}
+    </NavLink>
+  );
+}
 
 export default function Sidebar() {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const generalLinks = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/tickets/create', icon: PlusCircle, label: 'Create Ticket' },
-    { to: '/tickets', icon: Ticket, label: 'My Tickets' },
-    { to: '/kb', icon: BookOpen, label: 'Knowledge Base' },
-  ];
-
-  const adminLinks = [
-    { to: '/analytics', icon: BarChart3, label: 'Analytics' },
-    { to: '/users', icon: Users, label: 'User Management' },
-  ];
+  const initials = user?.name
+    ?.split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   const handleLogout = () => {
     logout();
@@ -27,110 +76,54 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-200 flex flex-col h-screen fixed left-0 top-0 z-30 shadow-sm">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-slate-200/80 bg-slate-50/50">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-brand-blue/10 rounded-xl flex items-center justify-center border border-brand-blue/20">
-            <Headphones className="w-5 h-5 text-brand-blue" />
-          </div>
-          <div>
-            <h1 className="font-extrabold text-sm text-slate-800 tracking-tight">IT Service Desk</h1>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Intelligent Portal</p>
-          </div>
+    <aside className="w-56 bg-nav-bg flex flex-col h-screen fixed left-0 top-0 z-30 overflow-y-auto">
+      {/* Brand */}
+      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-nav-border">
+        <div className="w-7 h-7 rounded bg-primary-600 flex items-center justify-center shrink-0">
+          <Headphones className="w-4 h-4 text-white" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-white text-sm font-semibold leading-none truncate">IT Service Desk</p>
+          <p className="text-nav-text text-xs mt-0.5 truncate">Enterprise Portal</p>
         </div>
       </div>
 
-      {/* Main Nav Links */}
-      <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
-        <div>
-          <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Service Desk</span>
-          <div className="space-y-1">
-            {generalLinks.map(({ to, icon: Icon, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
-                    isActive
-                      ? 'bg-brand-blue-light/30 border-brand-blue/20 text-brand-blue-dark shadow-sm'
-                      : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'
-                  }`
-                }
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </NavLink>
-            ))}
-          </div>
-        </div>
-
-        {/* Admin Section */}
-        {isAdmin && (
-          <div>
-            <div className="px-3 flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Admin Console</span>
-              <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />
+      {/* Navigation */}
+      <nav className="flex-1 px-2 py-3 space-y-4">
+        {NAV_SECTIONS.map((section) => {
+          if (section.adminOnly && !isAdmin) return null;
+          return (
+            <div key={section.label}>
+              <p className="px-3 text-2xs font-semibold text-nav-text/60 uppercase tracking-widest mb-1">
+                {section.label}
+              </p>
+              <div className="space-y-0.5 relative">
+                {section.links.map((link) => (
+                  <NavItem key={link.to} {...link} />
+                ))}
+              </div>
             </div>
-            <div className="space-y-1">
-              {adminLinks.map(({ to, icon: Icon, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
-                      isActive
-                        ? 'bg-brand-teal-light/45 border-brand-teal/20 text-brand-teal-dark shadow-sm'
-                        : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'
-                    }`
-                  }
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </NavLink>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Unified Settings */}
-        <div>
-          <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Configuration</span>
-          <div className="space-y-1">
-            <NavLink
-              to="/settings"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
-                  isActive
-                    ? 'bg-brand-blue-light/30 border-brand-blue/20 text-brand-blue-dark shadow-sm'
-                    : 'text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50'
-                }`
-              }
-            >
-              <Settings className="w-4 h-4" />
-              Settings
-            </NavLink>
-          </div>
-        </div>
+          );
+        })}
       </nav>
 
-      {/* Footer Profile summary */}
-      <div className="p-4 border-t border-slate-200 bg-slate-50/50">
-        <div className="flex items-center gap-3 px-2 py-1.5 mb-2">
-          <div className="w-8 h-8 bg-brand-blue/10 rounded-full flex items-center justify-center text-xs font-bold text-brand-blue shrink-0">
-            {user?.name?.charAt(0)}
+      {/* User Profile Footer */}
+      <div className="px-2 py-3 border-t border-nav-border">
+        <div className="flex items-center gap-2.5 px-2 py-2 rounded">
+          <div className="w-7 h-7 rounded-full bg-primary-700 text-white text-xs font-semibold flex items-center justify-center shrink-0">
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-slate-800 truncate leading-none">{user?.name}</p>
-            <span className="text-[10px] text-slate-400 font-semibold capitalize mt-1 block">{user?.role}</span>
+            <p className="text-white text-xs font-medium truncate leading-tight">{user?.name}</p>
+            <p className="text-nav-text text-2xs truncate capitalize">{user?.role}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition-all text-left"
+          className="mt-1 nav-link nav-link-inactive w-full text-left hover:text-danger"
         >
-          <LogOut className="w-4 h-4 text-slate-400 hover:text-rose-500 shrink-0" />
-          Logout
+          <LogOut className="w-4 h-4 shrink-0" />
+          <span className="text-sm">Sign Out</span>
         </button>
       </div>
     </aside>

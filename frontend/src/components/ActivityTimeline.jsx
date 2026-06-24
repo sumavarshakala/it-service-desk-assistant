@@ -1,73 +1,65 @@
-import { Clock, MessageSquare, PlusCircle, CheckCircle, UserPlus, AlertCircle } from 'lucide-react';
+import { PlusCircle, MessageCircle, CheckCircle, AlertTriangle, ArrowRight, Shield, Clock, Tag } from 'lucide-react';
 
-export default function ActivityTimeline({ events = [], loading = false }) {
-  if (loading) {
-    return (
-      <div className="py-8 text-center text-xs text-slate-400 animate-pulse">
-        Generating timeline activities...
-      </div>
-    );
-  }
+const EVENT_CONFIG = {
+  blue: { ring: 'ring-2 ring-blue-200', bg: 'bg-blue-100', text: 'text-blue-600', line: 'border-blue-200' },
+  purple: { ring: 'ring-2 ring-purple-200', bg: 'bg-purple-100', text: 'text-purple-600', line: 'border-purple-200' },
+  green: { ring: 'ring-2 ring-emerald-200', bg: 'bg-emerald-100', text: 'text-emerald-600', line: 'border-emerald-200' },
+  amber: { ring: 'ring-2 ring-amber-200', bg: 'bg-amber-100', text: 'text-amber-600', line: 'border-amber-200' },
+  rose: { ring: 'ring-2 ring-rose-200', bg: 'bg-rose-100', text: 'text-rose-600', line: 'border-rose-200' },
+  slate: { ring: 'ring-2 ring-slate-200', bg: 'bg-slate-100', text: 'text-slate-500', line: 'border-slate-200' },
+};
 
+export default function ActivityTimeline({ events = [] }) {
   if (events.length === 0) {
     return (
-      <div className="py-8 text-center text-xs text-slate-400">
-        No recent updates or activity recorded.
+      <div className="py-10 text-center">
+        <Clock className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+        <p className="text-xs text-slate-400 font-medium">No activity recorded yet</p>
       </div>
     );
   }
 
   return (
-    <div className="flow-root">
-      <ul className="-mb-8">
-        {events.map((event, eventIdx) => {
-          const Icon = event.icon || Clock;
-          return (
-            <li key={event.id || eventIdx}>
-              <div className="relative pb-8">
-                {eventIdx !== events.length - 1 ? (
-                  <span
-                    className="absolute left-4 top-4 -ml-px h-full w-0.5 bg-slate-100"
-                    aria-hidden="true"
-                    style={{ zIndex: 1 }}
-                  />
-                ) : null}
-                <div className="relative flex space-x-3" style={{ zIndex: 2 }}>
-                  <div>
-                    <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-4 ring-white ${
-                      event.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                      event.color === 'green' ? 'bg-emerald-50 text-emerald-600' :
-                      event.color === 'purple' ? 'bg-indigo-50 text-indigo-600' :
-                      event.color === 'amber' ? 'bg-amber-50 text-amber-600' :
-                      event.color === 'red' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-500'
-                    }`}>
-                      <Icon className="w-4 h-4" aria-hidden="true" />
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0 pt-1.5 flex justify-between space-x-4">
-                    <div>
-                      <p className="text-xs font-semibold text-slate-800 leading-snug">
-                        {event.title}{' '}
-                        {event.user && (
-                          <span className="font-bold text-brand-blue-dark">by {event.user}</span>
-                        )}
-                      </p>
-                      {event.description && (
-                        <p className="text-[11px] text-slate-500 mt-1 bg-slate-50 border border-slate-100 rounded-md p-2 leading-relaxed">
-                          {event.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right text-[10px] whitespace-nowrap text-slate-400 font-semibold self-start">
-                      {event.time}
-                    </div>
-                  </div>
-                </div>
+    <div className="relative space-y-1">
+      {events.map((event, i) => {
+        const cfg = EVENT_CONFIG[event.color] || EVENT_CONFIG.slate;
+        const Icon = event.icon || Clock;
+        const isLast = i === events.length - 1;
+
+        return (
+          <div key={event.id} className="flex gap-4 animate-fade-in" style={{ animationDelay: `${i * 80}ms`, opacity: 0 }}>
+            {/* Timeline spine */}
+            <div className="flex flex-col items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${cfg.bg} ${cfg.ring}`}>
+                <Icon className={`w-3.5 h-3.5 ${cfg.text}`} />
               </div>
-            </li>
-          );
-        })}
-      </ul>
+              {!isLast && (
+                <div className={`w-px flex-1 mt-1 mb-1 border-l-2 border-dashed min-h-[24px] ${cfg.line} opacity-40`} />
+              )}
+            </div>
+
+            {/* Content */}
+            <div className={`flex-1 min-w-0 ${isLast ? '' : 'pb-5'}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-semibold text-slate-800">{event.title}</p>
+                  {event.user && (
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      by <span className="font-semibold text-slate-700">{event.user}</span>
+                    </p>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium shrink-0 mt-0.5">{event.time}</span>
+              </div>
+              {event.description && (
+                <div className={`mt-2 p-2.5 rounded-lg text-[11px] text-slate-600 leading-relaxed ${cfg.bg} border border-opacity-40 ${cfg.line}`}>
+                  {event.description}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

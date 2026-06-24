@@ -11,6 +11,7 @@ import Analytics from './pages/Analytics';
 import UserManagement from './pages/UserManagement';
 import KnowledgeBase from './pages/KnowledgeBase';
 import Settings from './pages/Settings';
+import WellnessHub from './pages/WellnessHub';
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -35,6 +36,7 @@ function AppRoutes() {
       <Route path="/tickets" element={<ProtectedRoute><TicketList adminView={user?.role === 'admin'} /></ProtectedRoute>} />
       <Route path="/tickets/:id" element={<ProtectedRoute><TicketDetail /></ProtectedRoute>} />
       <Route path="/kb" element={<ProtectedRoute><KnowledgeBase /></ProtectedRoute>} />
+      <Route path="/wellness" element={<ProtectedRoute><WellnessHub /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
       {/* Admin Specific Routes */}
